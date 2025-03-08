@@ -38,38 +38,38 @@ func TestLength(t *testing.T) {
 
 func TestAddScalar(t *testing.T) {
 	// Add lower adjacency
-	assert.Equal(t, "0-3", fromStr("1-3").AddScalar(0).String())
+	assert.Equal(t, "0-3", fromStr("1-3").Add1(0).String())
 	// Add lower no adjacency
-	assert.Equal(t, "0,2-3", fromStr("2-3").AddScalar(0).String())
+	assert.Equal(t, "0,2-3", fromStr("2-3").Add1(0).String())
 	// Add existing
-	assert.Equal(t, "1-3", fromStr("1-3").AddScalar(2).String())
+	assert.Equal(t, "1-3", fromStr("1-3").Add1(2).String())
 	// Add upper adjacency
-	assert.Equal(t, "1-4", fromStr("1-3").AddScalar(4).String())
+	assert.Equal(t, "1-4", fromStr("1-3").Add1(4).String())
 	// Add upper no adjacency
-	assert.Equal(t, "1-3,5", fromStr("1-3").AddScalar(5).String())
+	assert.Equal(t, "1-3,5", fromStr("1-3").Add1(5).String())
 	// Add adjacency on both sides
-	assert.Equal(t, "1-7", fromStr("1-3,5-7").AddScalar(4).String())
+	assert.Equal(t, "1-7", fromStr("1-3,5-7").Add1(4).String())
 	// Add adjacency on both sides
-	assert.Equal(t, "1-7,9-10", fromStr("1-3,5-7,9-10").AddScalar(4).String())
+	assert.Equal(t, "1-7,9-10", fromStr("1-3,5-7,9-10").Add1(4).String())
 	// Add in middle no adjacency
-	assert.Equal(t, "1-3,5,7-9", fromStr("1-3,7-9").AddScalar(5).String())
+	assert.Equal(t, "1-3,5,7-9", fromStr("1-3,7-9").Add1(5).String())
 	// Add to empty
-	assert.Equal(t, "1", Empty[int]().Plural().AddScalar(1).String())
+	assert.Equal(t, "1", Empty[int]().Plural().Add1(1).String())
 	// Add to maximum
-	assert.Equal(t, "1-255", FromStr[uint8]("1-255").AddScalar(1).String())
+	assert.Equal(t, "1-255", FromStr[uint8]("1-255").Add1(1).String())
 }
 
 func TestRemove(t *testing.T) {
-	assert.Equal(t, "", fromStr("").RemoveScalar(0).String())
-	assert.Equal(t, "1-3", fromStr("0-3").RemoveScalar(0).String())
-	assert.Equal(t, "0-2", fromStr("0-3").RemoveScalar(3).String())
-	assert.Equal(t, "0,2-3", fromStr("0-3").RemoveScalar(1).String())
-	assert.Equal(t, "0-2,5-7", fromStr("0-3,5-7").RemoveScalar(3).String())
-	assert.Equal(t, "0-3,6-7", fromStr("0-3,5-7").RemoveScalar(5).String())
-	assert.Equal(t, "0-3,5-7", fromStr("0-3,5-7").RemoveScalar(4).String())
-	assert.Equal(t, "0-3,5-7", fromStr("0-3,5-7").RemoveScalar(-1).String())
-	assert.Equal(t, "0-3,5-7", fromStr("0-3,5-7").RemoveScalar(8).String())
-	assert.Equal(t, "0-3,7-9", fromStr("0-3,5,7-9").RemoveScalar(5).String())
+	assert.Equal(t, "", fromStr("").Sub1(0).String())
+	assert.Equal(t, "1-3", fromStr("0-3").Sub1(0).String())
+	assert.Equal(t, "0-2", fromStr("0-3").Sub1(3).String())
+	assert.Equal(t, "0,2-3", fromStr("0-3").Sub1(1).String())
+	assert.Equal(t, "0-2,5-7", fromStr("0-3,5-7").Sub1(3).String())
+	assert.Equal(t, "0-3,6-7", fromStr("0-3,5-7").Sub1(5).String())
+	assert.Equal(t, "0-3,5-7", fromStr("0-3,5-7").Sub1(4).String())
+	assert.Equal(t, "0-3,5-7", fromStr("0-3,5-7").Sub1(-1).String())
+	assert.Equal(t, "0-3,5-7", fromStr("0-3,5-7").Sub1(8).String())
+	assert.Equal(t, "0-3,7-9", fromStr("0-3,5,7-9").Sub1(5).String())
 }
 
 func TestInnerBinsearch(t *testing.T) {

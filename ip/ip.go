@@ -19,6 +19,9 @@ func From(ip net.IP) IP {
 	return IP(uint128.FromBytes(ip.To16()))
 }
 
+var V4Min = From(net.ParseIP("0.0.0.0"))
+var V4Max = From(net.ParseIP("255.255.255.255"))
+
 func (ip IP) Into() net.IP {
 	bytes := uint128.U128(ip).IntoBytes()
 	return bytes[:]
@@ -26,10 +29,10 @@ func (ip IP) Into() net.IP {
 
 type u128 = uint128.U128
 
-func (ip IP) Add(rhs uint128.U128) IP { return IP(u128(ip).Add(rhs)) }
-func (ip IP) AddU64(rhs uint64) IP    { return IP(u128(ip).AddU64(rhs)) }
-func (ip IP) Sub(rhs uint128.U128) IP { return IP(u128(ip).Sub(rhs)) }
-func (ip IP) SubU64(rhs uint64) IP    { return IP(u128(ip).SubU64(rhs)) }
+func (ip IP) AddExt(rhs uint128.U128) IP { return IP(u128(ip).Add(rhs)) }
+func (ip IP) Add(rhs uint64) IP          { return IP(u128(ip).AddU64(rhs)) }
+func (ip IP) SubExt(rhs uint128.U128) IP { return IP(u128(ip).Sub(rhs)) }
+func (ip IP) Sub(rhs uint64) IP          { return IP(u128(ip).SubU64(rhs)) }
 
 func (ip IP) LessThan(rhs IP) bool           { return u128(ip).LessThan(u128(rhs)) }
 func (ip IP) LessOrEqualThan(rhs IP) bool    { return u128(ip).LessOrEqualThan(u128(rhs)) }
@@ -37,6 +40,8 @@ func (ip IP) GreaterThan(rhs IP) bool        { return u128(ip).GreaterThan(u128(
 func (ip IP) GreaterOrEqualThan(rhs IP) bool { return u128(ip).GreaterOrEqualThan(u128(rhs)) }
 
 func (ip IP) IntoBytes() [16]byte { return u128(ip).IntoBytes() }
+
+func (ip IP) String() string { return ip.Into().String() }
 
 func Compare(a, b IP) int { return uint128.Compare(u128(a), u128(b)) }
 

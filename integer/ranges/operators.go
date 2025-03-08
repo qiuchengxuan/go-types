@@ -102,8 +102,8 @@ func (r Ranges[I]) Sub(other Ranges[I]) Ranges[I] {
 			index++
 		case right.end < start: // orthangognal and right lower, skip right
 			otherIndex++
-		case right.start <= start && left.end <= right.end: // right contains left, skip left
-			index++
+		case right.start <= start && left.end <= right.end:
+			index++ // right contains left, skip left
 		default:
 			if right.end < left.end { // break apart or lower part has intersection
 				if start < right.start {

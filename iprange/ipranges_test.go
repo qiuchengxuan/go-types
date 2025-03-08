@@ -1,78 +1,157 @@
 package iprange
 
 import (
+	"fmt"
+	"math"
 	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/qiuchengxuan/go-types/integer/uint128"
+	"github.com/qiuchengxuan/go-types/ip"
 )
 
-func TestIPv4FromStr(t *testing.T) {
-	assert.Equal(t, "", FromStr("").String())
-	assert.Equal(t, "0.0.0.0", FromStr("0.0.0.0").String())
-	assert.Equal(t, "1.1.1.1", FromStr("1.1.1.1").String())
-	assert.Equal(t, "1.1.1.1-1.1.1.2", FromStr("1.1.1.1,1.1.1.2").String())
-	expected := "1.1.1.1-1.1.1.255"
-	assert.Equal(t, expected, FromStr(expected).String())
-	assert.Equal(t, "1.1.1.5", FromStr("1.1.1.5,1.1.1.5").String())
-	expected = "1.1.1.1-1.1.1.255,1.1.2.1-1.1.2.255"
-	assert.Equal(t, expected, FromStr(expected).String())
-	assert.Equal(t, "", FromStr("1.1.1.1-1.1.1.255-1.1.2.1").String())
-	assert.Equal(t, "", FromStr("1.1.1-1.1.1.255").String())
-	assert.Equal(t, "", FromStr("1.1.1.1-1.1.1.").String())
-	assert.Equal(t, "1.1.1.5,1.1.1.10-1.1.1.12", FromStr("1.1.1.10-1.1.1.12,1.1.1.5").String())
+func TestIPv4Ranges(t *testing.T) {
+	ipranges := FromStr("0.0.0.1-0.0.0.4")
+	assert.True(t, ipranges.V4Only())
+
+	sum := 0
+	ipranges.Foreach(func(ip net.IP) { sum += int(ip[len(ip)-1]) })
+	assert.Equal(t, sum, 10)
+
+	ipranges = ipranges.AddIP(ip.MustParse("0.0.0.5"))
+	assert.Equal(t, "0.0.0.1-0.0.0.5", ipranges.String())
+	assert.True(t, ipranges.Contains(ip.MustParse("0.0.0.2")))
+	assert.Equal(t, "0.0.0.2", ipranges.Index(1).String())
+	ip, _ := ipranges.Pop()
+	assert.Equal(t, "0.0.0.1", ip.String())
+	assert.Equal(t, "0.0.0.2-0.0.0.5", ipranges.String())
 }
 
-func TestIPv6FromStr(t *testing.T) {
-	assert.Equal(t, "", FromStr("").String())
-	assert.Equal(t, "::", FromStr("::").String())
-	assert.Equal(t, "fd01::1", FromStr("fd01::1").String())
-	expected := "fd01::1-fd01::f"
-	assert.Equal(t, expected, FromStr(expected).String())
-	assert.Equal(t, "::1-::2", FromStr("::1,::2").String())
-	assert.Equal(t, "::1,::3", FromStr("::1,::3").String())
+func TestIPv6Ranges(t *testing.T) {
+	ipranges := FromStr("::3-::5")
+	sum := 0
+	ipranges.Foreach(func(ip net.IP) { sum += int(ip[len(ip)-1]) })
+	assert.Equal(t, 12, sum)
+
+	assert.Equal(t, "::1,::3-::5", ipranges.AddIP(ip.MustParse("::1")).String())
+	assert.Equal(t, "::2-::5", ipranges.AddIP(ip.MustParse("::2")).String())
+	assert.Equal(t, "::3-::5", ipranges.AddIP(ip.MustParse("::3")).String())
+	assert.Equal(t, "::3-::5", ipranges.AddIP(ip.MustParse("::4")).String())
+	assert.Equal(t, "::3-::6", ipranges.AddIP(ip.MustParse("::6")).String())
+	assert.Equal(t, "::3-::5,::7", ipranges.AddIP(ip.MustParse("::7")).String())
+
+	ipranges = FromStr("::3-::5,::7-::8")
+	assert.Equal(t, "::3-::8", ipranges.AddIP(ip.MustParse("::6")).String())
+
+	ipranges = FromStr("::3-::5,::9")
+	assert.Equal(t, "::3-::5,::7,::9", ipranges.AddIP(ip.MustParse("::7")).String())
+
+	ipranges = FromStr("::1-::3")
+	assert.Equal(t, "::1-::3", ipranges.SubIP(ip.MustParse("::")).String())
+	assert.Equal(t, "::2-::3", ipranges.SubIP(ip.MustParse("::1")).String())
+	assert.Equal(t, "::1,::3", ipranges.SubIP(ip.MustParse("::2")).String())
+	assert.Equal(t, "::1-::2", ipranges.SubIP(ip.MustParse("::3")).String())
+	assert.Equal(t, "::1-::3", ipranges.SubIP(ip.MustParse("::4")).String())
+
+	assert.Equal(t, "::1,::5", FromStr("::1,::3,::5").SubIP(ip.MustParse("::3")).String())
 }
 
-func TestMixedFromStr(t *testing.T) {
-	expected := "192.168.1.1-192.168.1.255,fd01::1-fd01::f"
-	assert.Equal(t, expected, FromStr(expected).String())
+func TestTypeCast(t *testing.T) {
+	ipranges := FromStr("8000::1-8000::4")
+	cast, overflow := ipranges.Cast(ip.MustParse("::"))
+	assert.Equal(t, "", cast.String())
+	assert.True(t, overflow)
+
+	cast, overflow = ipranges.Cast(ip.MustParse("::1"))
+	assert.Equal(t, "", cast.String())
+	assert.True(t, overflow)
+
+	base := ip.IP(uint128.FromPrimitive(1).Shl(127))
+	cast, overflow = ipranges.Cast(base.Sub(1))
+	assert.Equal(t, "2-5", cast.String())
+	assert.False(t, overflow)
+
+	cast, overflow = ipranges.Cast(base.Sub(math.MaxUint64).Add(3))
+	expected := fmt.Sprintf("%d-%d", uint64(math.MaxUint64)-2, uint64(math.MaxUint64))
+	assert.Equal(t, expected, cast.String())
+	assert.True(t, overflow)
+
+	cast, overflow = ipranges.Cast(base)
+	assert.Equal(t, "1-4", cast.String())
+	assert.False(t, overflow)
+
+	cast, overflow = ipranges.Cast(base.Add(1))
+	assert.Equal(t, "0-3", cast.String())
+	assert.False(t, overflow)
+
+	cast, overflow = ipranges.Cast(ip.IP(uint128.FromPrimitive(3).Shl(126)))
+	assert.Equal(t, "", cast.String())
+	assert.True(t, overflow)
+
+	ipranges = FromStr("::1-::3,::5-::7")
+	cast, overflow = ipranges.Cast(ip.FromPrimitive(1))
+	assert.Equal(t, "0-2,4-6", cast.String())
+	assert.False(t, overflow)
+
+	cast, overflow = ipranges.Cast(ip.FromPrimitive(2))
+	assert.Equal(t, "0-1,3-5", cast.String())
+	assert.True(t, overflow)
+
+	cast, overflow = ipranges.Cast(ip.FromPrimitive(4))
+	assert.Equal(t, "1-3", cast.String())
+	assert.True(t, overflow)
+
+	cast, overflow = ipranges.Cast(ip.FromPrimitive(6))
+	assert.Equal(t, "0-1", cast.String())
+	assert.True(t, overflow)
+
+	cast, overflow = ipranges.Cast(ip.FromPrimitive(8))
+	assert.Equal(t, "", cast.String())
+	assert.True(t, overflow)
 }
 
-func TestFromIPNet4(t *testing.T) {
-	_, cidr, _ := net.ParseCIDR("192.168.1.0/24")
-	assert.Equal(t, "192.168.1.0-192.168.1.255", FromIPNet(*cidr).String())
+func TestBinsearch(t *testing.T) {
+	value, ok := FromStr("").Binsearch(ip.MustParse("::"))
+	assert.Equal(t, 0, int(value.UnsafeCast()))
+	assert.False(t, ok)
+	ranges := FromStr("::1-::2,::5-::6,::8")
 
-	_, cidr, _ = net.ParseCIDR("0.0.0.0/0")
-	assert.Equal(t, "0.0.0.0-255.255.255.255", FromIPNet(*cidr).String())
+	value, ok = ranges.Binsearch(ip.MustParse("::"))
+	assert.Equal(t, 0, int(value.UnsafeCast()))
+	assert.False(t, ok)
 
-	_, cidr, _ = net.ParseCIDR("0.0.0.0/32")
-	assert.Equal(t, "", FromIPNet(*cidr).String())
+	value, ok = ranges.Binsearch(ip.MustParse("::1"))
+	assert.Equal(t, 0, int(value.UnsafeCast()))
+	assert.True(t, ok)
+
+	value, ok = ranges.Binsearch(ip.MustParse("::2"))
+	assert.Equal(t, 1, int(value.UnsafeCast()))
+	assert.True(t, ok)
+
+	value, ok = ranges.Binsearch(ip.MustParse("::3"))
+	assert.Equal(t, 2, int(value.UnsafeCast()))
+	assert.False(t, ok)
+
+	value, ok = ranges.Binsearch(ip.MustParse("::4"))
+	assert.Equal(t, 2, int(value.UnsafeCast()))
+	assert.False(t, ok)
+
+	value, ok = ranges.Binsearch(ip.MustParse("::8"))
+	assert.Equal(t, 4, int(value.UnsafeCast()))
+	assert.True(t, ok)
+
+	value, ok = ranges.Binsearch(ip.MustParse("::9"))
+	assert.Equal(t, 5, int(value.UnsafeCast()))
+	assert.False(t, ok)
 }
 
-func TestFromIPNet6(t *testing.T) {
-	_, cidr, _ := net.ParseCIDR("fd01::/64")
-	assert.Equal(t, "fd01::-fd01::ffff:ffff:ffff:ffff", FromIPNet(*cidr).String())
-
-	_, cidr, _ = net.ParseCIDR("::/0")
-	expected := "::-ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"
-	assert.Equal(t, expected, FromIPNet(*cidr).String())
-
-	_, cidr, _ = net.ParseCIDR("::/127")
-	assert.Equal(t, "::-::1", FromIPNet(*cidr).String())
-
-	_, cidr, _ = net.ParseCIDR("::/128")
-	assert.Equal(t, "", FromIPNet(*cidr).String())
-}
-
-func TestFromNetIPs(t *testing.T) {
-	expected := FromStr("1.1.1.1")
+func TestBinaryMarshal(t *testing.T) {
+	expected := FromStr("::1-::3,::5-::7")
 	data, _ := expected.MarshalBinary()
 	var actual IPRanges
-	assert.NoError(t, actual.UnmarshalBinary(data))
-	assert.Equal(t, expected, actual)
-
-	expected = FromStr("1.1.1.1-1.1.1.4,fd01::1-fd01::4")
-	data, _ = expected.MarshalBinary()
+	assert.Error(t, actual.UnmarshalBinary(data[:len(data)-1]))
 	assert.NoError(t, actual.UnmarshalBinary(data))
 	assert.Equal(t, expected, actual)
 }

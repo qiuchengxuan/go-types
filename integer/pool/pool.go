@@ -47,7 +47,7 @@ func (p Pool[I]) Clone() Pool[I] {
 
 func (p *Pool[I]) Allocate(opts ...I) (I, bool) {
 	if len(opts) > 0 {
-		if p.available.Remove(opts[0]) {
+		if p.available.Delete(opts[0]) {
 			return opts[0], true
 		}
 		return 0, false
@@ -59,7 +59,7 @@ func (p *Pool[I]) Release(x I) bool {
 	if !p.capacity.Contains(x) {
 		return false
 	}
-	p.available = p.available.AddScalar(x)
+	p.available = p.available.Add1(x)
 	return true
 }
 
