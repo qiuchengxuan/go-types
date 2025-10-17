@@ -14,24 +14,35 @@ type Tree[P Point[P], V any] struct {
 	size uint64
 }
 
-func (t *Tree[P, V]) Query(interval Interval[P]) *Entry[P, V] {
+func (t *Tree[P, V]) Get(interval Interval[P]) *Entry[P, V] {
 	if t.root == nil {
 		return nil
 	}
-	if !t.root.minMax.overlaps(&interval) {
+	if !t.root.minMax.contains(&interval) {
 		return nil
 	}
-	entry := t.root.query(interval, func(_ *Entry[P, V]) bool { return true })
-	if entry == nil {
-		return nil
-	}
-	return entry
+	return t.root.query(interval, func(entry *Entry[P, V]) bool {
+		return entry.interval == interval
+	})
 }
 
-//go:inline
+func (t *Tree[P, V]) QueryAll(interval Interval[P]) []Entry[P, V] {
+	if t.root == nil {
+		return nil
+	}
+	if !t.root.minMax.hasIntersection(&interval) {
+		return nil
+	}
+	var items []Entry[P, V]
+	t.root.query(interval, func(entry *Entry[P, V]) bool {
+		items = append(items, *entry)
+		return false
+	})
+	return items
+}
+
 func (t *Tree[P, V]) Size() uint64 { return t.size }
 
-//go:inline
 func updateMinMaxFrom[P Point[P], V any](node *node[P, V]) {
 	for ; node != nil; node = node.parent {
 		node.updateMinMax()
@@ -74,7 +85,7 @@ func rebalanceAfterInsert[P Point[P], V any](cur *node[P, V]) *node[P, V] {
 	return cur
 }
 
-func (t *Tree[P, V]) Put(interval Interval[P], value V) bool {
+func (t *Tree[P, V]) Put(interval Interval[P], value V) {
 	if t.size+1 == math.MaxUint64 {
 		panic("Maximum size")
 	}
@@ -83,14 +94,14 @@ func (t *Tree[P, V]) Put(interval Interval[P], value V) bool {
 		t.root = newNode
 		t.root.color = black
 		t.size++
-		return true
 	}
 
 	cur := t.root
 	for newNode != nil {
 		switch compareIntervals(interval, cur.entry.interval) {
 		case 0:
-			return false
+			cur.entry.value = value
+			return
 		case -1:
 			if cur.leftChild() == nil {
 				newNode.parent = cur
@@ -107,14 +118,10 @@ func (t *Tree[P, V]) Put(interval Interval[P], value V) bool {
 	}
 	t.size++
 	updateMinMaxFrom(rebalanceAfterInsert(cur))
-	return true
 }
 
 func rebalanceAfterDelete[P Point[P], V any](cur *node[P, V]) *node[P, V] {
-	for {
-		if cur.parent == nil { // case 1: root node
-			break
-		}
+	for cur.parent != nil { // case 1: root node
 		dir := cur.direction()
 		parent := cur.parent
 		sibling := cur.slibing()  // sibling won't be nil, because deleted node is black

@@ -10,8 +10,8 @@ func (r Ranges[I]) MarshalText() ([]byte, error) { return []byte(r.String()), ni
 
 func (r *Ranges[I]) UnmarshalText(text []byte) error {
 	*r = FromStr[I](string(text))
-	if *r == nil {
-		return errors.New("Malformed ranges")
+	if *r == nil && len(text) > 0 {
+		return errors.New("malformed ranges")
 	}
 	return nil
 }
@@ -39,7 +39,7 @@ func (r *Ranges[I]) UnmarshalBinary(data []byte) error {
 	var tmp I
 	sizeOf := int(unsafe.Sizeof(tmp))
 	if len(data)%(sizeOf*2) != 0 {
-		return errors.New("Not ranges data")
+		return errors.New("not ranges data")
 	}
 	aligned := data
 	length := len(aligned) / (sizeOf * 2)
@@ -50,19 +50,19 @@ func (r *Ranges[I]) UnmarshalBinary(data []byte) error {
 	}
 	slice := unsafe.Slice((*I)(unsafe.Pointer(&aligned[0])), len(aligned)/sizeOf)
 	var buf [8]byte
-	for i := 0; i < length; i++ {
+	for i := range length {
 		*(*I)(unsafe.Pointer(&buf[8-sizeOf])) = slice[i*2]
 		start := I(binary.BigEndian.Uint64(buf[:]))
 		*(*I)(unsafe.Pointer(&buf[8-sizeOf])) = slice[i*2+1]
 		end := I(binary.BigEndian.Uint64(buf[:]))
 		if start > end {
-			return errors.New("Not a valid ranges data")
+			return errors.New("not a valid ranges data")
 		}
 		ranges[i] = Range[I]{start, end}
 	}
 	for i := 1; i < length; i++ {
 		if ranges[i-1].end >= ranges[i].start {
-			return errors.New("Not a valid ranges data")
+			return errors.New("not a valid ranges data")
 		}
 	}
 	*r = ranges

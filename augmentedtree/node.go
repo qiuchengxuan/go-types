@@ -7,10 +7,8 @@ type Entry[P Point[P], V any] struct {
 	value    V
 }
 
-//go:inline
 func (e *Entry[P, V]) Interval() Interval[P] { return e.interval }
 
-//go:inline
 func (e *Entry[P, V]) Value() V { return e.value }
 
 type color uint8
@@ -25,7 +23,6 @@ const (
 	left, right direction = 0, 1
 )
 
-//go:inline
 func (d direction) opposite() direction { return d ^ 1 }
 
 type node[P Point[P], V any] struct {
@@ -36,16 +33,12 @@ type node[P Point[P], V any] struct {
 	color  color
 }
 
-//go:inline
 func (n *node[P, V]) grandParent() *node[P, V] { return n.parent.parent }
 
-//go:inline
 func (n *node[P, V]) leftChild() *node[P, V] { return n.childs[left] }
 
-//go:inline
 func (n *node[P, V]) rightChild() *node[P, V] { return n.childs[right] }
 
-//go:inline
 func (n *node[P, V]) is(color color) bool {
 	if n == nil {
 		return black == color
@@ -53,10 +46,8 @@ func (n *node[P, V]) is(color color) bool {
 	return n.color == color
 }
 
-//go:inline
 func (n *node[P, V]) child(direction direction) *node[P, V] { return n.childs[direction] }
 
-//go:inline
 func (n *node[P, V]) direction() direction {
 	if n.parent.childs[left] == n {
 		return left
@@ -64,7 +55,6 @@ func (n *node[P, V]) direction() direction {
 	return right
 }
 
-//go:inline
 func (n *node[P, V]) uncle() *node[P, V] {
 	grandParent := n.parent.parent
 	if grandParent.leftChild() != n.parent {
@@ -73,7 +63,6 @@ func (n *node[P, V]) uncle() *node[P, V] {
 	return grandParent.rightChild()
 }
 
-//go:inline
 func (n *node[P, V]) slibing() *node[P, V] {
 	if n != n.parent.leftChild() {
 		return n.parent.leftChild()
@@ -82,17 +71,17 @@ func (n *node[P, V]) slibing() *node[P, V] {
 }
 
 func (n *node[P, V]) query(interval Interval[P], fn func(*Entry[P, V]) bool) *Entry[P, V] {
-	if interval.overlaps(&n.entry.interval) {
+	if interval.hasIntersection(&n.entry.interval) {
 		if fn(&n.entry) {
 			return &n.entry
 		}
 	}
-	if left := n.leftChild(); left != nil && left.minMax.overlaps(&interval) {
+	if left := n.leftChild(); left != nil && left.minMax.hasIntersection(&interval) {
 		if retval := left.query(interval, fn); retval != nil {
 			return retval
 		}
 	}
-	if right := n.rightChild(); right != nil && right.minMax.overlaps(&interval) {
+	if right := n.rightChild(); right != nil && right.minMax.hasIntersection(&interval) {
 		if retval := right.query(interval, fn); retval != nil {
 			return retval
 		}
@@ -100,7 +89,6 @@ func (n *node[P, V]) query(interval Interval[P], fn func(*Entry[P, V]) bool) *En
 	return nil
 }
 
-//go:inline
 func (n *node[P, V]) updateMinMax() {
 	low := n.entry.interval.low
 	if left := n.leftChild(); left != nil {
@@ -113,15 +101,11 @@ func (n *node[P, V]) updateMinMax() {
 	n.minMax = Interval[P]{low, high}
 }
 
-//go:inline
 func compareIntervals[P Point[P]](a, b Interval[P]) int {
-	if a.low.lessThan(b.low) {
-		return -1
+	if cmp := a.low.compare(b.low); cmp != 0 {
+		return cmp
 	}
-	if a.low.greaterThan(b.low) {
-		return 1
-	}
-	return 0
+	return a.high.compare(b.high)
 }
 
 /*
@@ -176,7 +160,6 @@ func (n *node[P, V]) rotateRight() {
 	n.updateMinMax()
 }
 
-//go:inline
 func (n *node[P, V]) rotate(direction direction) {
 	if direction == left {
 		n.rotateLeft()

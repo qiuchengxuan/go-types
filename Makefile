@@ -1,6 +1,8 @@
 .PHONY: lint
 lint:
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.5
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.4.0
+	@go mod download
+	go mod tidy -diff > /dev/null
 	golangci-lint run ./... --timeout 5m
 
 .PHONY: test

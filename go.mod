@@ -1,12 +1,12 @@
 module github.com/qiuchengxuan/go-types
 
-go 1.22.0
+go 1.23.0
 
-toolchain go1.22.9
+toolchain go1.23.9
 
 require (
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/exp v0.0.0-20250207012021-f9890c6ad9f3
+	golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6
 )
 
 require (

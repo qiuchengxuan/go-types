@@ -57,22 +57,6 @@ func (r Range[I]) End() I {
 	return r.end
 }
 
-func (r *Range[I]) expandLower(size I) {
-	r.start -= size
-}
-
-func (r *Range[I]) expandUpper(size I) {
-	r.end += size
-}
-
-func (r *Range[I]) shrinkLower(size I) {
-	r.start += size
-}
-
-func (r *Range[I]) shrinkUpper(size I) {
-	r.end -= size
-}
-
 func (r Range[I]) StartOf(start I) Range[I] {
 	return Range[I]{start: start, end: r.end}
 }
@@ -81,14 +65,24 @@ func (r Range[I]) EndOf(end I) Range[I] {
 	return Range[I]{start: r.start, end: end}
 }
 
-func FromTo[I constraints.Integer](from, to I) Range[I] {
-	return Range[I]{start: from, end: to}
+func (r Range[I]) Ranges() Ranges[I] {
+	if r.Len() == 0 {
+		return nil
+	}
+	return Ranges[I]{r}
 }
 
 func Of[I constraints.Integer](v I) Range[I] {
-	return Range[I]{start: v, end: v}
+	return Range[I]{v, v}
 }
 
 func Empty[I constraints.Integer]() Range[I] {
-	return Range[I]{start: I(1), end: I(0)}
+	return Range[I]{I(1), I(0)}
+}
+
+func FromTo[I constraints.Integer](from, to I) Range[I] {
+	if to < from {
+		return Empty[I]()
+	}
+	return Range[I]{from, to}
 }

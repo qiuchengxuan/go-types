@@ -28,56 +28,58 @@ func newInterval(low, high int) Interval[intPoint[int]] {
 
 func TestAugmentedTree(t *testing.T) {
 	tree := Tree[intPoint[int], struct{}]{}
-	assert.True(t, tree.Put(newInterval(1, 2), struct{}{}))
-	assert.True(t, tree.Put(newInterval(2, 3), struct{}{}))
+	tree.Put(newInterval(1, 2), struct{}{})
+	tree.Put(newInterval(2, 3), struct{}{})
 	assert.Equal(t, newInterval(1, 3), tree.root.minMax)
-	assert.True(t, tree.Put(newInterval(0, 1), struct{}{}))
+	tree.Put(newInterval(0, 1), struct{}{})
 	assert.Equal(t, newInterval(0, 3), tree.root.minMax)
-	assert.Nil(t, tree.Query(newInterval(-1, -1)))
-	assert.NotNil(t, tree.Query(newInterval(0, 0)))
-	assert.Equal(t, newInterval(1, 2), tree.Query(newInterval(2, 2)).interval)
-	assert.NotNil(t, tree.Query(newInterval(3, 3)))
-	assert.NotNil(t, tree.Query(newInterval(0, 4)))
-	assert.Nil(t, tree.Query(newInterval(4, 4)))
+	assert.Empty(t, tree.QueryAll(newInterval(-1, -1)))
+	assert.NotEmpty(t, tree.QueryAll(newInterval(0, 0)))
+	assert.Equal(t, newInterval(1, 2), tree.QueryAll(newInterval(2, 2))[0].interval)
+	assert.NotEmpty(t, tree.QueryAll(newInterval(3, 3)))
+	assert.NotEmpty(t, tree.QueryAll(newInterval(0, 4)))
+	assert.Empty(t, tree.QueryAll(newInterval(4, 4)))
+	tree.Put(newInterval(1, 3), struct{}{})
+	assert.Equal(t, 3, len(tree.QueryAll(newInterval(2, 2))))
 
 	tree = Tree[intPoint[int], struct{}]{}
-	for i := 0; i < 10; i++ {
-		assert.True(t, tree.Put(newInterval(i, i), struct{}{}))
+	for i := range 10 {
+		tree.Put(newInterval(i, i), struct{}{})
 	}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		assert.True(t, tree.Delete(newInterval(i, i)))
 	}
 }
 
 func TestAugmentedTreeRotationLeft(t *testing.T) {
 	tree := Tree[intPoint[int], struct{}]{}
-	assert.True(t, tree.Put(newInterval(1, 2), struct{}{}))
-	assert.True(t, tree.Put(newInterval(3, 4), struct{}{}))
-	assert.True(t, tree.Put(newInterval(5, 6), struct{}{}))
+	tree.Put(newInterval(1, 2), struct{}{})
+	tree.Put(newInterval(3, 4), struct{}{})
+	tree.Put(newInterval(5, 6), struct{}{})
 	assert.Equal(t, newInterval(1, 6), tree.root.minMax)
 }
 
 func TestAugmentedTreeRotationRight(t *testing.T) {
 	tree := Tree[intPoint[int], struct{}]{}
-	assert.True(t, tree.Put(newInterval(5, 6), struct{}{}))
-	assert.True(t, tree.Put(newInterval(3, 4), struct{}{}))
-	assert.True(t, tree.Put(newInterval(1, 2), struct{}{}))
+	tree.Put(newInterval(5, 6), struct{}{})
+	tree.Put(newInterval(3, 4), struct{}{})
+	tree.Put(newInterval(1, 2), struct{}{})
 	assert.Equal(t, newInterval(1, 6), tree.root.minMax)
 }
 
 func TestAugmentedTreeRotationLeftRight(t *testing.T) {
 	tree := Tree[intPoint[int], struct{}]{}
-	assert.True(t, tree.Put(newInterval(1, 2), struct{}{}))
-	assert.True(t, tree.Put(newInterval(5, 6), struct{}{}))
-	assert.True(t, tree.Put(newInterval(3, 4), struct{}{}))
+	tree.Put(newInterval(1, 2), struct{}{})
+	tree.Put(newInterval(5, 6), struct{}{})
+	tree.Put(newInterval(3, 4), struct{}{})
 	assert.Equal(t, newInterval(1, 6), tree.root.minMax)
 }
 
 func TestAugmentedTreeRotationRightLeft(t *testing.T) {
 	tree := Tree[intPoint[int], struct{}]{}
-	assert.True(t, tree.Put(newInterval(5, 6), struct{}{}))
-	assert.True(t, tree.Put(newInterval(1, 2), struct{}{}))
-	assert.True(t, tree.Put(newInterval(3, 4), struct{}{}))
+	tree.Put(newInterval(5, 6), struct{}{})
+	tree.Put(newInterval(1, 2), struct{}{})
+	tree.Put(newInterval(3, 4), struct{}{})
 	assert.Equal(t, newInterval(1, 6), tree.root.minMax)
 }
 
@@ -130,18 +132,18 @@ func TestAugmentedTreeDeleteNode(t *testing.T) {
 
 func BenchmarkAugmentedTreePut(b *testing.B) {
 	tree := Tree[intPoint[int], struct{}]{}
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		tree.Put(newInterval(i, i), struct{}{})
 	}
 }
 
 func BenchmarkAugmentedTreeDelete(b *testing.B) {
 	tree := Tree[intPoint[int], struct{}]{}
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		tree.Put(newInterval(i, i), struct{}{})
 	}
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		tree.Delete(newInterval(i, i))
 	}
 }

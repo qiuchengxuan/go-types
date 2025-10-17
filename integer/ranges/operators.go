@@ -1,9 +1,7 @@
 package ranges
 
-import "slices"
-
 func (r Ranges[I]) Add(other Ranges[I]) Ranges[I] {
-	if len(other) == 0 {
+	if len(other) == 0 || r.Contains(other) {
 		return r
 	} else if len(r) == 0 {
 		return other
@@ -54,32 +52,12 @@ func (r Ranges[I]) Add(other Ranges[I]) Ranges[I] {
 	return append(retval, remain...)
 }
 
-func (r Ranges[I]) Intersect(other Ranges[I]) Ranges[I] {
-	if len(r) == 0 || len(other) == 0 {
-		return nil
+func (r Ranges[I]) AddNaive(naive Range[I]) Ranges[I] {
+	if naive.Len() == 0 || r.ContainsNaive(naive) {
+		return r
 	}
-
-	index, otherIndex := 0, 0
-	retval := make(Ranges[I], 0, len(r))
-	for index < len(r) && otherIndex < len(other) {
-		left, right := r[index], other[otherIndex]
-		switch {
-		case right.end < left.start:
-			otherIndex++
-		case left.end < right.start:
-			index++
-		default:
-			if intersect := r[index].Intersect(other[otherIndex]); intersect.Len() > 0 {
-				retval = append(retval, intersect)
-			}
-			if left.end < right.end {
-				index++
-			} else {
-				otherIndex++
-			}
-		}
-	}
-	return retval
+	other := [1]Range[I]{naive}
+	return r.Add(other[:])
 }
 
 // time complexity O(N + M)
@@ -128,65 +106,16 @@ func (r Ranges[I]) Sub(other Ranges[I]) Ranges[I] {
 	return append(retval, r[index:]...)
 }
 
-func (r Ranges[I]) Add1(value I) Ranges[I] {
-	if len(r) == 0 {
-		return FromTo(value, value).Plural()
-	}
-	index, found := r.binsearch(value)
-	if found {
+func (r Ranges[I]) AddScalar(value I) Ranges[I] {
+	if r.Has(value) {
 		return r
 	}
-	if 0 < index && index < len(r) {
-		if r[index-1].end+1 == value && value == r[index].start-1 {
-			ranges := slices.Clone(r[:index-1])
-			ranges = append(ranges, FromTo(r[index-1].start, r[index].end))
-			return append(ranges, r[index+1:]...)
-		}
-	}
-	ranges := slices.Clone(r)
-	switch {
-	case 0 < index && r[index-1].end+1 == value:
-		ranges[index-1].expandUpper(1)
-	case index < len(r) && r[index].start-1 == value:
-		ranges[index].expandLower(1)
-	case index == len(r):
-		return append(ranges, Of(value))
-	default:
-		ranges = append(ranges[:index], Of(value))
-		return append(ranges, r[index:]...)
-	}
-	return ranges
+	return r.Clone().Ref().Assign().AddScalar(value)
 }
 
-func (r *Ranges[I]) Delete(value I) bool {
-	if len(*r) == 0 {
-		return false
+func (r Ranges[I]) SubScalar(value I) Ranges[I] {
+	if !r.Has(value) {
+		return r
 	}
-	if value < r.First() || r.Last() < value {
-		return false
-	}
-	index, found := r.binsearch(value)
-	if !found {
-		return false
-	}
-	switch entry := &(*r)[index]; {
-	case entry.Len() == 1:
-		*r = append((*r)[:index], (*r)[index+1:]...)
-		return true
-	case value == entry.start:
-		entry.shrinkLower(1)
-	case value == entry.end:
-		entry.shrinkUpper(1)
-	default:
-		(*r) = append((*r)[:index+1], (*r)[index:]...)
-		(*r)[index] = (*r)[index].EndOf(value - 1)
-		(*r)[index+1] = (*r)[index+1].StartOf(value + 1)
-	}
-	return true
-}
-
-func (r Ranges[I]) Sub1(value I) Ranges[I] {
-	ranges := slices.Clone(r)
-	ranges.Delete(value)
-	return ranges
+	return r.Clone().Ref().Assign().SubScalar(value)
 }

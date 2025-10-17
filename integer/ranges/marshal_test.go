@@ -7,6 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestTextUnmarshal(t *testing.T) {
+	var ranges Ranges[uint]
+	assert.NoError(t, ranges.UnmarshalText(nil))
+	assert.Error(t, ranges.UnmarshalText([]byte("whatever")))
+}
+
 func TestBinaryMarshal(t *testing.T) {
 	sizeOf := int(unsafe.Sizeof(uint16(0)))
 	expected := FromStr[uint16]("1-3,5-7,9-10")

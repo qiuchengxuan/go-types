@@ -12,19 +12,27 @@ import (
 	"github.com/qiuchengxuan/go-types/ip"
 )
 
+func TestRanges(t *testing.T) {
+	addr := ip.From(net.ParseIP("1.1.1.1"))
+	assert.Nil(t, FromTo(addr.Add(2), addr).Ranges())
+	assert.Nil(t, Empty().Ranges())
+}
+
 func TestIPv4Ranges(t *testing.T) {
 	ipranges := FromStr("0.0.0.1-0.0.0.4")
 	assert.True(t, ipranges.V4Only())
 
 	sum := 0
-	ipranges.Foreach(func(ip net.IP) { sum += int(ip[len(ip)-1]) })
-	assert.Equal(t, sum, 10)
+	for ip := range ipranges.Iter() {
+		sum += int(ip.U32())
+	}
+	assert.Equal(t, 10, sum)
 
 	ipranges = ipranges.AddIP(ip.MustParse("0.0.0.5"))
 	assert.Equal(t, "0.0.0.1-0.0.0.5", ipranges.String())
-	assert.True(t, ipranges.Contains(ip.MustParse("0.0.0.2")))
+	assert.True(t, ipranges.Has(ip.MustParse("0.0.0.2")))
 	assert.Equal(t, "0.0.0.2", ipranges.Index(1).String())
-	ip, _ := ipranges.Pop()
+	ip, _ := ipranges.Assign().Pop()
 	assert.Equal(t, "0.0.0.1", ip.String())
 	assert.Equal(t, "0.0.0.2-0.0.0.5", ipranges.String())
 }
@@ -32,7 +40,9 @@ func TestIPv4Ranges(t *testing.T) {
 func TestIPv6Ranges(t *testing.T) {
 	ipranges := FromStr("::3-::5")
 	sum := 0
-	ipranges.Foreach(func(ip net.IP) { sum += int(ip[len(ip)-1]) })
+	for ip := range ipranges.Iter() {
+		sum += int(ip[len(ip)-1])
+	}
 	assert.Equal(t, 12, sum)
 
 	assert.Equal(t, "::1,::3-::5", ipranges.AddIP(ip.MustParse("::1")).String())
@@ -114,36 +124,36 @@ func TestTypeCast(t *testing.T) {
 
 func TestBinsearch(t *testing.T) {
 	value, ok := FromStr("").Binsearch(ip.MustParse("::"))
-	assert.Equal(t, 0, int(value.UnsafeCast()))
+	assert.Equal(t, 0, value)
 	assert.False(t, ok)
 	ranges := FromStr("::1-::2,::5-::6,::8")
 
 	value, ok = ranges.Binsearch(ip.MustParse("::"))
-	assert.Equal(t, 0, int(value.UnsafeCast()))
+	assert.Equal(t, 0, value)
 	assert.False(t, ok)
 
 	value, ok = ranges.Binsearch(ip.MustParse("::1"))
-	assert.Equal(t, 0, int(value.UnsafeCast()))
+	assert.Equal(t, 0, value)
 	assert.True(t, ok)
 
 	value, ok = ranges.Binsearch(ip.MustParse("::2"))
-	assert.Equal(t, 1, int(value.UnsafeCast()))
+	assert.Equal(t, 0, value)
 	assert.True(t, ok)
 
 	value, ok = ranges.Binsearch(ip.MustParse("::3"))
-	assert.Equal(t, 2, int(value.UnsafeCast()))
+	assert.Equal(t, 1, value)
 	assert.False(t, ok)
 
 	value, ok = ranges.Binsearch(ip.MustParse("::4"))
-	assert.Equal(t, 2, int(value.UnsafeCast()))
+	assert.Equal(t, 1, value)
 	assert.False(t, ok)
 
 	value, ok = ranges.Binsearch(ip.MustParse("::8"))
-	assert.Equal(t, 4, int(value.UnsafeCast()))
+	assert.Equal(t, 2, value)
 	assert.True(t, ok)
 
 	value, ok = ranges.Binsearch(ip.MustParse("::9"))
-	assert.Equal(t, 5, int(value.UnsafeCast()))
+	assert.Equal(t, 3, value)
 	assert.False(t, ok)
 }
 
